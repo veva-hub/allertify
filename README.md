@@ -10,7 +10,7 @@ Allertify is a project that aims to design and develop an user-friendly mobile a
 - Google Teachable Machine
 
 # Authors
-Eniel Leba
-Jimea Aziel Faigao
-Mary Valen Magante
-Vernon Joseph Yeremia Tamba
+* Eniel Leba
+* Jimea Aziel Faigao
+* Mary Valen Magante
+* Vernon Joseph Yeremia Tamba
