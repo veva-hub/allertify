@@ -1,11 +1,10 @@
+const fs = require('fs');
 require('dotenv').config();
-const fs = require('fs')
-const http = require('http');
 const cors = require('cors');
 const axios = require('axios');
 const express = require('express');
 const formData = require('form-data');
-const querystring = require('querystring');
+const mysql = require('promise-mysql2');
 const fileUpload = require('express-fileupload');
 const TeachableMachine = require("@sashido/teachablemachine-node");
 
@@ -51,11 +50,11 @@ app.post('/product/imagerecognition', async(req, res, next)=>{
 
     const imgPath = __dirname + '/uploads/' + img.name;
  
-    // Move the uploaded image to our upload folder
-    img.mv(imgPath);
-
-    //save image as url
-    let url = getUrlFromImg(imgPath)
+    // Move the uploaded image to our upload folder and create an url for it
+    let url;
+    img.mv(imgPath).then(() =>{ 
+        url = getUrlFromImg(imgPath)
+    })
 
     //load model
     let prediction;
@@ -165,59 +164,21 @@ const getNameFromBarcode = async (barcode) =>{
 
 //helper
 const getUrlFromImg = (imgPath) =>{
-    // var data = querystring.stringify({
-    //     image : img
-    //   });
-    // const params = {
-    //     'key': '6d207e02198a847aa98d0a2a901485a5',
-    //     'action' : 'upload',
-    //     'format' : 'json',
-    // }
+    const params = {
+        'host' : env.IMAGEHOSTING.HOST,
+        'key': env.IMAGEHOSTING.KEY,
+        'action' : env.IMAGEHOSTING.ACTION,
+        'format' : env.IMAGEHOSTING.FORMAT
+    }
 
-    // var form = new formData();
-    // form.append('source', fs.createReadStream(imgPath));
+    let form = new formData();
+    form.append('source', fs.createReadStream(imgPath));
 
-    // form.submit(`https://freeimage.host/api/1/upload?key=${params.key}&action=${params.action}&format=${params.format}`, (err, response)=>{
-    //     if(err) 
-    //         console.log(err)
-        
-    //     console.log(response)
-    // })
-    
-    // fs.readFile(imgPath, {encoding: 'base64'}, (err, base64)=>{
-    //     if(err) console.log('there is an error', err)
-
-
-    //     http.request
-    //     const options = {
-    //         host: env.POSTURL || `https://freeimage.host/api/1/upload?key=${params.key}&action=${params.action}&source=${params.source}&format=${params.format}`,
-    //         method: 'POST',
-    //       };
-        
-    //       let httpreq = http.request(options, function (response) {
-    //         response.setEncoding('utf8');
-    //         response.on('data', function (chunk) {
-    //           console.log("body: " + chunk);
-    //         });
-    //         response.on('end', function() {
-    //           res.send('ok');
-    //         })
-    //       });
-    //     //   httpreq.write(data);
-    //       httpreq.end();
-
-    // })
-    // let postUrl = env.POSTURL || "https://freeimage.host/api/1/upload?key=6d207e02198a847aa98d0a2a901485a5&action=upload&format=json"
-    // axios.post(postUrl, {source : data}, {Headers:{'content-Type' : 'application/form-data'}})
-    //   .then((response) =>{
-    //     console.log(response)
-    //   })
-    
-      
-
-
-    // return "https://cdn.shopify.com/s/files/1/0482/0067/9587/products/IMG_5647_503x503.jpg?v=1600881730"
-    return "https://images.ctfassets.net/uexfe9h31g3m/6QtnhruEFi8qgEyYAICkyS/baae41c24d12e557bcc35c556049f43b/Spaghetti_Bolognese_Lifestyle_Full_Bleed_Recipe_Image__1__copy.jpg?w=768&h=512&fm=jpg&fit=thumb&q=90&fl=progressive"
+    axios.post(`${params.host}?key=${params.key}&action=${params.action}&format=${params.format}`, form).then((res) =>{
+        return res.data.image.url;
+    }).catch((e) =>{
+        console.log(e)
+    })
 }
 
 function EmptyOrRows(rows) {
