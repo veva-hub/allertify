@@ -66,9 +66,8 @@ app.post('/product/imagerecognition', async(req, res, next)=>{
     await model.classify({
     imageUrl: url,
     }).then(async (predictions) => {
-        console.log("Predictions:", predictions);
         //get highest value
-        prediction = predictions[0]
+        prediction = getHighestValue(predictions);
 
         // check if highest value is greater that 0.7
         if(prediction.score < 0.7)
@@ -165,10 +164,10 @@ const getNameFromBarcode = async (barcode) =>{
 //helper
 const getUrlFromImg = (imgPath) =>{
     const params = {
-        'host' : env.IMAGEHOSTING.HOST,
-        'key': env.IMAGEHOSTING.KEY,
-        'action' : env.IMAGEHOSTING.ACTION,
-        'format' : env.IMAGEHOSTING.FORMAT
+        'host' : "https://freeimage.host/api/1/upload",
+        'key': '6d207e02198a847aa98d0a2a901485a5',
+        'action' : 'upload',
+        'format' : 'json'
     }
 
     let form = new formData();
@@ -180,8 +179,13 @@ const getUrlFromImg = (imgPath) =>{
         console.log(e)
     })
 }
+const getHighestValue = (predictions) =>{
+    predictions.sort((a, b) => b.score - a.score);
 
-function EmptyOrRows(rows) {
+    return predictions[0]
+}
+
+const EmptyOrRows = (rows) => {
     if (!rows) {
       return [];
     }
