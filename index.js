@@ -50,38 +50,38 @@ app.post('/product/imagerecognition', async(req, res, next)=>{
 
     const imgPath = __dirname + '/uploads/' + img.name;
  
-    // Move the uploaded image to our upload folder and create an url for it
+    // Move the uploaded image to our upload folder and continue with image recognition
     let url;
-    img.mv(imgPath).then(() =>{ 
-        url = getUrlFromImg(imgPath)
+    img.mv(imgPath).then(async () =>{ 
+        url = await getUrlFromImg(imgPath)
+        //load model
+        let prediction;
+
+        const model = new TeachableMachine({
+            modelUrl: env.MODEL
+        });
+
+        await model.classify({
+        imageUrl: url,
+        }).then(async (predictions) => {
+            console.log(predictions)
+            //get highest value
+            prediction = getHighestValue(predictions);
+
+            // check if highest value is greater that 0.7
+            if(prediction.score < 0.7)
+                return res.status(400).json({error:'no food recognized'});
+            
+            let ingredients = await getIngredients(prediction.class)
+
+            let result = checkForAllergens(ingredients, allergens);
+            result = {...result, name : prediction.class}
+            return res.status(200).json(result)
+        }).catch((e) => {
+            console.log("ERROR", e);
+            return;
+        });
     })
-
-    //load model
-    let prediction;
-
-    const model = new TeachableMachine({
-        modelUrl: env.MODEL
-    });
-
-    await model.classify({
-    imageUrl: url,
-    }).then(async (predictions) => {
-        //get highest value
-        prediction = getHighestValue(predictions);
-
-        // check if highest value is greater that 0.7
-        if(prediction.score < 0.7)
-            return res.status(400).json({error:'no food recognized'});
-        
-        let ingredients = await getIngredients(prediction.class)
-
-        let result = checkForAllergens(ingredients, allergens);
-        return res.status(200).json(result)
-    }).catch((e) => {
-        console.log("ERROR", e);
-        return;
-    });
-
 })
 
 app.post('/product/barcode', async(req, res, next)=>{
@@ -98,12 +98,14 @@ app.post('/product/barcode', async(req, res, next)=>{
     let ingredients = await getIngredients(name)
 
     let result = checkForAllergens(ingredients, allergens);
+    result = {...result, name : name}
     return res.status(200).json(result)
 })
 
 //db config
 const dbConfig = {
     host: env.DB_HOST,
+    // port : env.DB_PORT,
     user: env.DB_USER,
     password: env.DB_PASSWORD,
     database: env.DB_NAME
@@ -122,10 +124,14 @@ const EndConnection = (connection) =>{
 
 //execute the query
 async function Query (sql, parms) {
-    let conn = await ConnectToDatabase()
-    let [result, ] = await conn.query(sql, parms);
-    EndConnection(conn);
-  return result;
+    try{
+        let conn = await ConnectToDatabase()
+        let [result, ] = await conn.query(sql, parms);
+        EndConnection(conn);
+        return result;
+    } catch (e) {
+        console.log('An error occured', e)
+    }
 }
 
 //services
@@ -135,11 +141,15 @@ const getAllIngredients = async ()=>{
         []
     );
     const ingredients = EmptyOrRows(result);
+    for(let i = 0; i<ingredients.length; i++){
+        ingredients.push(ingredients[0].name);
+        ingredients.shift();
+    }
     return ingredients;
 }
 
 const getIngredients = async (name)=>{
-    result = await db.Query(
+    result = await Query(
         `SELECT ingredient.name FROM ingredient 
             INNER JOIN (ingredients_list, product) 
             ON product.name = ? 
@@ -148,35 +158,41 @@ const getIngredients = async (name)=>{
         [name]
     );
     const ingredients = EmptyOrRows(result);
+    for(let i = 0; i<ingredients.length; i++){
+        ingredients.push(ingredients[0].name);
+        ingredients.shift();
+    }
     return ingredients;
 }
 
 const getNameFromBarcode = async (barcode) =>{
-    result = await db.Query(
+    result = await Query(
         `SELECT name FROM product WHERE barcode = ?`,
         [barcode]
     );
-    const [name, ] = helper.EmptyOrRows(result);
-    return name;
+    const [product, ] = EmptyOrRows(result);
+    return product.name;
 }
 
 
 //helper
 const getUrlFromImg = (imgPath) =>{
-    const params = {
-        'host' : "https://freeimage.host/api/1/upload",
-        'key': '6d207e02198a847aa98d0a2a901485a5',
-        'action' : 'upload',
-        'format' : 'json'
-    }
-
-    let form = new formData();
-    form.append('source', fs.createReadStream(imgPath));
-
-    axios.post(`${params.host}?key=${params.key}&action=${params.action}&format=${params.format}`, form).then((res) =>{
-        return res.data.image.url;
-    }).catch((e) =>{
-        console.log(e)
+    return new Promise((resolve, reject) =>{
+        const params = {
+            'host' : "https://freeimage.host/api/1/upload",
+            'key': '6d207e02198a847aa98d0a2a901485a5',
+            'action' : 'upload',
+            'format' : 'json'
+        }
+    
+        let form = new formData();
+        form.append('source', fs.createReadStream(imgPath));
+    
+        axios.post(`${params.host}?key=${params.key}&action=${params.action}&format=${params.format}`, form).then((res) =>{
+            resolve(res.data.image.url);
+        }).catch((e) =>{
+            reject(e)
+        })
     })
 }
 const getHighestValue = (predictions) =>{
@@ -195,6 +211,7 @@ const EmptyOrRows = (rows) => {
 const checkForAllergens = (ingredients, allergens) =>{
     let count = 0
     let allergensFound = [];
+    console.log(ingredients)
 
     if(allergens.length == 0)
         return {status : "safe", count : count}
