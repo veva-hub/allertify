@@ -136,7 +136,7 @@ async function Query (sql, parms) {
 
 //services
 const getAllIngredients = async ()=>{
-    result = await Query(
+    let result = await Query(
         'SELECT name FROM ingredient',
         []
     );
@@ -149,7 +149,7 @@ const getAllIngredients = async ()=>{
 }
 
 const getIngredients = async (name)=>{
-    result = await Query(
+    let result = await Query(
         `SELECT ingredient.name FROM ingredient 
             INNER JOIN (ingredients_list, product) 
             ON product.name = ? 
@@ -166,7 +166,7 @@ const getIngredients = async (name)=>{
 }
 
 const getNameFromBarcode = async (barcode) =>{
-    result = await Query(
+    let result = await Query(
         `SELECT name FROM product WHERE barcode = ?`,
         [barcode]
     );
