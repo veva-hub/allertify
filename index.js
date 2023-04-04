@@ -2,6 +2,7 @@ const fs = require('fs');
 require('dotenv').config();
 const cors = require('cors');
 const axios = require('axios');
+const ngrok = require('ngrok');
 const express = require('express');
 const formData = require('form-data');
 const mysql = require('promise-mysql2');
@@ -230,8 +231,10 @@ const checkForAllergens = (ingredients, allergens) =>{
 }
 
 //launch application
-app.listen(PORT, (err)=>{
+app.listen(PORT, async (err)=>{
     if (err) throw err;
-    console.log(`app running at: http://${IP}:${PORT}`);
-})
 
+    const url = await ngrok.connect(PORT)
+    if(url)
+        console.log('app running at: ', url)
+})
