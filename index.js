@@ -45,9 +45,17 @@ app.post('/product/imagerecognition', async(req, res, next)=>{
     let allergens = req.body.allergens;
 
     //save img
-    // If no image submitted, exit
+        // If no image submitted, exit
     if (!img) 
-        return res.status(400).json({error: 'no image found'});
+        return res.status(400).json({error: 'no file found'});
+        //if not an image exit     
+    if (!img.mimetype.match('image')) {
+        return res.status(400).json({error: 'file is not an image'})
+    }
+        //change img name
+    const ext = '.'+img.mimetype.substring(6);
+    const date = new Date().getTime();
+    img.name = 'upload_'+date.toString()+ext;
 
     const imgPath = __dirname + '/uploads/' + img.name;
  
@@ -79,7 +87,7 @@ app.post('/product/imagerecognition', async(req, res, next)=>{
             result = {...result, name : prediction.class}
             return res.status(200).json(result)
         }).catch((e) => {
-            console.log("ERROR", e);
+            console.log("ERROR in image recognition", e);
             return;
         });
     })
@@ -131,7 +139,7 @@ async function Query (sql, parms) {
         EndConnection(conn);
         return result;
     } catch (e) {
-        console.log('An error occured', e)
+        console.log('An error occured while executing the query', e)
     }
 }
 
@@ -167,12 +175,13 @@ const getIngredients = async (name)=>{
 }
 
 const getNameFromBarcode = async (barcode) =>{
-    let result = await Query(
+    let product = await Query(
         `SELECT name FROM product WHERE barcode = ?`,
         [barcode]
     );
-    const [product, ] = EmptyOrRows(result);
-    return product.name;
+    if(product.length != 0)
+        return product[0].name;
+    return '';
 }
 
 
@@ -212,7 +221,6 @@ const EmptyOrRows = (rows) => {
 const checkForAllergens = (ingredients, allergens) =>{
     let count = 0
     let allergensFound = [];
-    console.log(ingredients)
 
     if(allergens.length == 0)
         return {status : "safe", count : count}
