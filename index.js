@@ -43,6 +43,7 @@ app.post('/product/imagerecognition', async(req, res, next)=>{
     //get image and allergens
     const img = req.files.img;
     let allergens = req.body.allergens;
+    allergens = allergens ? getAllergensAsArray(allergens) : [];
 
     //save img
         // If no image submitted, exit
@@ -73,12 +74,11 @@ app.post('/product/imagerecognition', async(req, res, next)=>{
         await model.classify({
         imageUrl: url,
         }).then(async (predictions) => {
-            console.log(predictions)
             //get highest value
             prediction = getHighestValue(predictions);
 
             // check if highest value is greater that 0.7
-            if(prediction.score < 0.7)
+            if(prediction.score < 0.8)
                 return res.status(400).json({error:'no food recognized'});
             
             let ingredients = await getIngredients(prediction.class)
@@ -97,6 +97,7 @@ app.post('/product/barcode', async(req, res, next)=>{
     //get barcode and allergens
     let barcode = req.body.barcode;
     let allergens = req.body.allergens;
+    allergens = allergens? getAllergensAsArray(allergens) : [];
 
     //retrieve name
     let name = await getNameFromBarcode(barcode);
@@ -186,6 +187,19 @@ const getNameFromBarcode = async (barcode) =>{
 
 
 //helper
+const getAllergensAsArray = (allergens) =>{
+    let fIndex = 0, result = [];
+    for(let i = 0; i < allergens.length; i++){
+          if(allergens[i] == ','){
+              result.push(allergens.substring(fIndex, i))
+              fIndex = i+1;
+          }
+          if(i === allergens.length-1)
+              result.push(allergens.substring(fIndex))
+      }
+    return result;
+}
+
 const getUrlFromImg = (imgPath) =>{
     return new Promise((resolve, reject) =>{
         const params = {
