@@ -2,7 +2,6 @@ const fs = require('fs');
 require('dotenv').config();
 const express = require('express');
 const mysql = require('promise-mysql2');
-const fileUpload = require('express-fileupload');
 const TeachableMachine = require("@sashido/teachablemachine-node");
 
 const app = express();
@@ -15,14 +14,6 @@ const TUNELIP = env.TUNELIP;
 app.use(express.urlencoded({ extended : true, }));
 app.use(express.static('public'));
 app.use(express.json());
-app.use(
-    fileUpload({
-        limits: {
-            fileSize: 10*1024*1024,
-        },
-        abortOnLimit: true,
-    })
-);
 
 app.get('/ingredients', async (req, res, next)=>{
     let ingredients = await getAllIngredients();  
