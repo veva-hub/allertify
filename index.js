@@ -1,6 +1,5 @@
 const fs = require('fs');
 require('dotenv').config();
-const ngrok = require('ngrok');
 const express = require('express');
 const mysql = require('promise-mysql2');
 const fileUpload = require('express-fileupload');
@@ -10,7 +9,7 @@ const app = express();
 const env = process.env
 const IP = env.IP;
 const PORT = env.PORT;
-const appIP = env.appIP;
+const TUNELIP = env.TUNELIP;
 
 //middleware
 app.use(express.urlencoded({ extended : true, }));
@@ -25,17 +24,14 @@ app.use(
     })
 );
 
-app.get('/ingredients', async (req, res, next)=>{    
-    console.log('ingredients called') 
+app.get('/ingredients', async (req, res, next)=>{
     let ingredients = await getAllIngredients();  
     res.json(ingredients);
 })
 
 app.post('/product/imagerecognition', async(req, res, next)=>{ 
-    console.log('image reco called') 
-    console.log(req.body)
-    // //get image and allergens
-    const url = req.body.imgUrl;
+    let imgUrl = req.body.imgUrl;
+    imgUrl = imgUrl? imgUrl.substring(1, imgUrl.length-1) : '';
     let allergens = req.body.allergens;
     allergens = allergens ? getAllergensAsArray(allergens) : [];
 
@@ -47,19 +43,19 @@ app.post('/product/imagerecognition', async(req, res, next)=>{
     });
 
     await model.classify({
-    imageUrl: url,
+    imageUrl: imgUrl
     }).then(async (predictions) => {
         //get highest value
         prediction = getHighestValue(predictions);
 
-        // check if highest value is greater that 0.7
+        // check if highest value is greater that 0.8
         if(prediction.score < 0.8)
             return res.status(400).json({error:'no food recognized'});
         
         let ingredients = await getIngredients(prediction.class)
-
         let result = checkForAllergens(ingredients, allergens);
         result = {...result, name : prediction.class}
+
         return res.status(200).json(result)
     }).catch((e) => {
         res.status(400).json({error: e})
@@ -69,17 +65,16 @@ app.post('/product/imagerecognition', async(req, res, next)=>{
 })
 
 app.post('/product/barcode', async(req, res, next)=>{ 
-    console.log('barcode called') 
-    console.log(req.body)
     //get barcode and allergens
     let barcode = req.body.barcode;
     let allergens = req.body.allergens;
     allergens = allergens? getAllergensAsArray(allergens) : [];
+    allergens.pop();
 
     //retrieve name
     let name = await getNameFromBarcode(barcode);
 
-    if(!name)
+    if(!name || name == '')
         return res.status(400).json({error : 'barcode not found in database'})
     
     let ingredients = await getIngredients(name)
@@ -213,7 +208,5 @@ const checkForAllergens = (ingredients, allergens) =>{
 app.listen(PORT, async (err)=>{
     if (err) throw err;
 
-    const url = await ngrok.connect(PORT)
-    if(url)
-        console.log('app running at: ', url)
+    console.log('app running at: ', TUNELIP)
 })
