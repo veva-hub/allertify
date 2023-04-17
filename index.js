@@ -20,12 +20,17 @@ app.get('/ingredients', async (req, res, next)=>{
     res.json(ingredients);
 })
 
+<<<<<<< Updated upstream
 app.post('/product/imagerecognition', async(req, res, next)=>{ 
+=======
+app.post('/product/imagerecognition', async(req, res, next)=>{
+>>>>>>> Stashed changes
     let imgUrl = req.body.imgUrl;
     imgUrl = imgUrl? imgUrl.substring(1, imgUrl.length-1) : '';
     let allergens = req.body.allergens;
     allergens = allergens ? getAllergensAsArray(allergens) : [];
 
+<<<<<<< Updated upstream
     //load model
     let prediction;
 
@@ -47,6 +52,37 @@ app.post('/product/imagerecognition', async(req, res, next)=>{
         let result = checkForAllergens(ingredients, allergens);
         result = {...result, name : prediction.class}
 
+=======
+    console.log('*******************************************************')
+    console.log('post image reco')
+    console.log(req.body)
+    console.log(imgUrl)
+
+    //load model
+    let prediction;
+
+    const model = new TeachableMachine({
+        modelUrl: env.MODEL
+    });
+
+    await model.classify({
+    imageUrl: imgUrl
+    }).then(async (predictions) => {
+        //get highest value
+        prediction = getHighestValue(predictions);
+
+        // check if highest value is greater that 0.8
+        if(prediction.score < 0.8){
+            console.log('no food recognized')
+            return res.status(400).json({error:'no food recognized'});
+        }
+
+        let ingredients = await getIngredients(prediction.class)
+        let result = checkForAllergens(ingredients, allergens);
+        result = {...result, name : prediction.class}
+        console.log(result)
+
+>>>>>>> Stashed changes
         return res.status(200).json(result)
     }).catch((e) => {
         res.status(400).json({error: e})
@@ -62,16 +98,28 @@ app.post('/product/barcode', async(req, res, next)=>{
     allergens = allergens? getAllergensAsArray(allergens) : [];
     allergens.pop();
 
+    console.log('*******************************************************')
+    console.log('post barcode')
+    console.log(req.body)
+
     //retrieve name
     let name = await getNameFromBarcode(barcode);
 
+<<<<<<< Updated upstream
     if(!name || name == '')
+=======
+    if(!name){
+        console.log('barcode not found in the databse')
+>>>>>>> Stashed changes
         return res.status(400).json({error : 'barcode not found in database'})
-    
+    }
+
     let ingredients = await getIngredients(name)
 
     let result = checkForAllergens(ingredients, allergens);
     result = {...result, name : name}
+    console.log(result)
+
     return res.status(200).json(result)
 })
 
@@ -107,7 +155,7 @@ async function Query (sql, parms) {
     }
 }
 
-//services
+//db services
 const getAllIngredients = async ()=>{
     let result = await Query(
         'SELECT name FROM ingredient',
@@ -159,45 +207,55 @@ const getAllergensAsArray = (allergens) =>{
           if(i === allergens.length-1)
               result.push(allergens.substring(fIndex))
       }
+    console.log(result)
+    if(result[result.length-1] == ',\r\n' || result[result.length-1] == ', ') result.pop
+    console.log(result)
+
     return result;
 }
 
 const getHighestValue = (predictions) =>{
     predictions.sort((a, b) => b.score - a.score);
+    console.log(predictions)
 
     return predictions[0]
 }
 
 const EmptyOrRows = (rows) => {
-    if (!rows) {
-      return [];
-    }
+    if (!rows) 
+        return [];
     return rows;
 }
 
 const checkForAllergens = (ingredients, allergens) =>{
     let count = 0
-    let allergensFound = [];
+    let allergensFound = '';
 
     if(allergens.length == 0)
         return {status : "safe", count : count}
 
     for (let allergen of allergens){
         if(ingredients.includes(allergen)){
-            allergensFound[count] = allergen;
+            allergensFound += `${allergen}, `;
             count++;
         }
     }
 
-    if(count == 0)
-        return {status : "safe", count : count}
+    if (allergensFound != '') allergensFound = allergensFound.substring(allergensFound.length-2)
 
-    return {status : "not safe", count : count}
+    if(count == 0 || allergensFound == ', ')
+        return {status : "safe", count : 0}
+
+    return {status : "not safe", count : count, allergensFound : allergensFound}
 }
 
 //launch application
 app.listen(PORT, async (err)=>{
     if (err) throw err;
+<<<<<<< Updated upstream
 
     console.log('app running at: ', TUNELIP)
+=======
+    console.log('app running at: ', appIP)
+>>>>>>> Stashed changes
 })
