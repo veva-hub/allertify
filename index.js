@@ -1,5 +1,6 @@
 const fs = require('fs');
 require('dotenv').config();
+const cors = require('cors');
 const express = require('express');
 const mysql = require('promise-mysql2');
 const TeachableMachine = require("@sashido/teachablemachine-node");
@@ -14,16 +15,26 @@ const TUNELIP = env.TUNELIP;
 app.use(express.urlencoded({ extended : true, }));
 app.use(express.static('public'));
 app.use(express.json());
+app.use(cors({
+    origin: '' 
+}));
 
 app.get('/ingredients', async (req, res, next)=>{
+    console.log('get ingredients called')
     let ingredients = await getAllIngredients();  
+    console.log('***************************************')
     res.json(ingredients);
 })
 
 <<<<<<< Updated upstream
 app.post('/product/imagerecognition', async(req, res, next)=>{ 
+<<<<<<< Updated upstream
 =======
 app.post('/product/imagerecognition', async(req, res, next)=>{
+>>>>>>> Stashed changes
+=======
+    console.log('post image recognition')
+    console.log(req.body)
 >>>>>>> Stashed changes
     let imgUrl = req.body.imgUrl;
     imgUrl = imgUrl? imgUrl.substring(1, imgUrl.length-1) : '';
@@ -52,6 +63,7 @@ app.post('/product/imagerecognition', async(req, res, next)=>{
         let result = checkForAllergens(ingredients, allergens);
         result = {...result, name : prediction.class}
 
+<<<<<<< Updated upstream
 =======
     console.log('*******************************************************')
     console.log('post image reco')
@@ -83,6 +95,10 @@ app.post('/product/imagerecognition', async(req, res, next)=>{
         console.log(result)
 
 >>>>>>> Stashed changes
+=======
+        console.log(result)
+        console.log('***************************************')
+>>>>>>> Stashed changes
         return res.status(200).json(result)
     }).catch((e) => {
         res.status(400).json({error: e})
@@ -92,6 +108,8 @@ app.post('/product/imagerecognition', async(req, res, next)=>{
 })
 
 app.post('/product/barcode', async(req, res, next)=>{ 
+    console.log('post barcode')
+    console.log(req.body)
     //get barcode and allergens
     let barcode = req.body.barcode;
     let allergens = req.body.allergens;
@@ -106,6 +124,7 @@ app.post('/product/barcode', async(req, res, next)=>{
     let name = await getNameFromBarcode(barcode);
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     if(!name || name == '')
 =======
     if(!name){
@@ -114,12 +133,23 @@ app.post('/product/barcode', async(req, res, next)=>{
         return res.status(400).json({error : 'barcode not found in database'})
     }
 
+=======
+    if(!name || name == ''){
+        console.log('barcode not found in database')
+        console.log('***************************************')
+        return res.status(400).json({error : 'barcode not found in database'})}
+    
+>>>>>>> Stashed changes
     let ingredients = await getIngredients(name)
 
     let result = checkForAllergens(ingredients, allergens);
     result = {...result, name : name}
     console.log(result)
+<<<<<<< Updated upstream
 
+=======
+    console.log('***************************************')
+>>>>>>> Stashed changes
     return res.status(200).json(result)
 })
 
