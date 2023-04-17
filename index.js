@@ -1,10 +1,6 @@
-const fs = require('fs');
 require('dotenv').config();
 const cors = require('cors');
-const axios = require('axios');
-const ngrok = require('ngrok');
 const express = require('express');
-const formData = require('form-data');
 const mysql = require('promise-mysql2');
 const fileUpload = require('express-fileupload');
 const TeachableMachine = require("@sashido/teachablemachine-node");
@@ -34,66 +30,62 @@ app.use(cors({
     credentials: true
 }));
 
-app.get('/ingredients', async (req, res, next)=>{     
-    let ingredients = await getAllIngredients();  
+app.get('/ingredients', async (req, res, next)=>{   
+    console.log('***********************************************************************') 
+    console.log('get /ingredients') 
+    let ingredients = await getAllIngredients(); 
+    console.log(ingredients) 
     res.json(ingredients);
 })
 
 app.post('/product/imagerecognition', async(req, res, next)=>{
+    console.log('***********************************************************************')  
+    console.log('post /product/imagerecognition')
+    console.log(req.body)
     //get image and allergens
-    const img = req.files.img;
+    let img = req.body.imgUrl;
+    img = img? img.substring(1, img.length-1) : '';
     let allergens = req.body.allergens;
     allergens = allergens ? getAllergensAsArray(allergens) : [];
 
-    //save img
-        // If no image submitted, exit
-    if (!img) 
-        return res.status(400).json({error: 'no file found'});
-        //if not an image exit     
-    if (!img.mimetype.match('image')) {
-        return res.status(400).json({error: 'file is not an image'})
-    }
-        //change img name
-    const ext = '.'+img.mimetype.substring(6);
-    const date = new Date().getTime();
-    img.name = 'upload_'+date.toString()+ext;
+    let url = img
+    //load model
+    let prediction;
 
-    const imgPath = __dirname + '/uploads/' + img.name;
- 
-    // Move the uploaded image to our upload folder and continue with image recognition
-    let url;
-    img.mv(imgPath).then(async () =>{ 
-        url = await getUrlFromImg(imgPath)
-        //load model
-        let prediction;
+    const model = new TeachableMachine({
+        modelUrl: env.MODEL
+    });
 
-        const model = new TeachableMachine({
-            modelUrl: env.MODEL
-        });
+    await model.classify({
+    imageUrl: url,
+    }).then(async (predictions) => {
+        //get highest value
+        prediction = getHighestValue(predictions);
 
-        await model.classify({
-        imageUrl: url,
-        }).then(async (predictions) => {
-            //get highest value
-            prediction = getHighestValue(predictions);
+        // check if highest value is greater that 0.7
+        if(prediction.score < 0.8){
+            console.log('no food recognized')
+            return res.status(400).json({error:'no food recognized'});
+        }
 
-            // check if highest value is greater that 0.7
-            if(prediction.score < 0.8)
-                return res.status(400).json({error:'no food recognized'});
-            
-            let ingredients = await getIngredients(prediction.class)
+        let ingredients = await getIngredients(prediction.class)
 
-            let result = checkForAllergens(ingredients, allergens);
-            result = {...result, name : prediction.class}
-            return res.status(200).json(result)
-        }).catch((e) => {
-            console.log("ERROR in image recognition", e);
-            return;
-        });
-    })
+        let result = checkForAllergens(ingredients, allergens);
+        result = {...result, name : prediction.class}
+        console.log(result)
+
+        return res.status(200).json(result)
+    }).catch((e) => {
+        console.log("ERROR in image recognition", e);
+        return res.status(400).json({error : e});
+    });
 })
 
 app.post('/product/barcode', async(req, res, next)=>{
+    console.log('***********************************************************************')  
+    console.log('post product/barcode')
+    console.log(req.body)
+
     //get barcode and allergens
     let barcode = req.body.barcode;
     let allergens = req.body.allergens;
@@ -102,13 +94,17 @@ app.post('/product/barcode', async(req, res, next)=>{
     //retrieve name
     let name = await getNameFromBarcode(barcode);
 
-    if(!name)
+    if(!name){
+        console.log('barcode not found in database')
         return res.status(400).json({error : 'barcode not found in database'})
-    
+    }
+
     let ingredients = await getIngredients(name)
 
     let result = checkForAllergens(ingredients, allergens);
     result = {...result, name : name}
+    console.log(result)
+
     return res.status(200).json(result)
 })
 
@@ -200,63 +196,41 @@ const getAllergensAsArray = (allergens) =>{
     return result;
 }
 
-const getUrlFromImg = (imgPath) =>{
-    return new Promise((resolve, reject) =>{
-        const params = {
-            'host' : "https://freeimage.host/api/1/upload",
-            'key': '6d207e02198a847aa98d0a2a901485a5',
-            'action' : 'upload',
-            'format' : 'json'
-        }
-    
-        let form = new formData();
-        form.append('source', fs.createReadStream(imgPath));
-    
-        axios.post(`${params.host}?key=${params.key}&action=${params.action}&format=${params.format}`, form).then((res) =>{
-            resolve(res.data.image.url);
-        }).catch((e) =>{
-            reject(e)
-        })
-    })
-}
 const getHighestValue = (predictions) =>{
     predictions.sort((a, b) => b.score - a.score);
+    console.log(predictions)
 
     return predictions[0]
 }
 
 const EmptyOrRows = (rows) => {
-    if (!rows) {
-      return [];
-    }
+    if (!rows) return [];
     return rows;
 }
 
 const checkForAllergens = (ingredients, allergens) =>{
     let count = 0
-    let allergensFound = [];
+    let allergensFound = '';
 
     if(allergens.length == 0)
         return {status : "safe", count : count}
 
     for (let allergen of allergens){
         if(ingredients.includes(allergen)){
-            allergensFound[count] = allergen;
+            allergensFound += `${allergen}, `;
             count++;
         }
     }
+    allergensFound = allergensFound.substring(allergensFound.length-2)
 
-    if(count == 0)
-        return {status : "safe", count : count}
+    if(count == 0 || allergensFound == ', ')
+        return {status : "safe", count : 0}
 
-    return {status : "not safe", count : count}
+    return {status : "not safe", count : count, allergensFound : allergensFound}
 }
 
 //launch application
 app.listen(PORT, async (err)=>{
     if (err) throw err;
-
-    const url = await ngrok.connect(PORT)
-    if(url)
-        console.log('app running at: ', url)
+    console.log('app running at: ', appIP)
 })
