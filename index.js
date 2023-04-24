@@ -33,9 +33,14 @@ app.use(cors({
 app.get('/ingredients', async (req, res, next) => {
     console.log('***********************************************************************')
     console.log('get /ingredients')
-    let ingredients = await getAllIngredients();
+    let ingredients = await getAllAllergens();
     console.log(ingredients)
     res.json(ingredients);
+})
+
+app.get('/allergens', async(req,res, next)=>{
+    let allergens = await getAllergens(req.body.name);
+    res.json(allergens);
 })
 
 app.post('/product/imagerecognition', async (req, res, next) => {
@@ -144,7 +149,7 @@ async function Query(sql, parms) {
 }
 
 //services
-const getAllIngredients = async () => {
+const getAllAllergens = async () => {
     let result = await Query(
         'SELECT name FROM ingredient',
         []
@@ -155,6 +160,14 @@ const getAllIngredients = async () => {
         ingredients.shift();
     }
     return ingredients;
+}
+
+const getAllergens = async(name) =>{
+    let allergens = await getAllAllergens();
+    let result = allergens.filter(allergen =>{
+        return allergen.toLowerCase().match(name.toLowerCase())
+    })
+    return result;
 }
 
 const getIngredients = async (name) => {
