@@ -41,6 +41,8 @@ app.get('/ingredients', async (req, res, next) => {
 app.post('/allergens', async (req, res, next) => {
     console.log(req.body)
     let allergens = await getAllergens(req.body.name);
+    console.log(allergens)
+    console.log(arrToString(allergens))
     res.json(arrToString(allergens));
 })
 
@@ -252,7 +254,8 @@ const arrToString = (arr) =>{
     for (let elmt of arr){
         temp += `${elmt}, `
     }
-    temp = temp.substring(0, temp-2)
+    temp = temp.substring(0, temp.length-2)
+    console.log(temp)
     return temp;
 }
 
