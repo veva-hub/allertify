@@ -40,7 +40,7 @@ app.get('/ingredients', async (req, res, next) => {
 
 app.get('/allergens', async(req,res, next)=>{
     let allergens = await getAllergens(req.body.name);
-    res.json(allergens);
+    res.json(arrToString(allergens));
 })
 
 app.post('/product/imagerecognition', async (req, res, next) => {
@@ -51,7 +51,7 @@ app.post('/product/imagerecognition', async (req, res, next) => {
     let img = req.body.imgUrl;
     img = img ? img.substring(1, img.length - 1) : '';
     let allergens = req.body.allergens;
-    allergens = allergens ? getAllergensAsArray(allergens) : [];
+    allergens = allergens ? stringToArray(allergens) : [];
 
     let url = img
     //load model
@@ -95,7 +95,7 @@ app.post('/product/barcode', async (req, res, next) => {
     //get barcode and allergens
     let barcode = req.body.barcode;
     let allergens = req.body.allergens;
-    allergens = allergens ? getAllergensAsArray(allergens) : [];
+    allergens = allergens ? stringToArray(allergens) : [];
 
     //retrieve name
     let name = await getNameFromBarcode(barcode);
@@ -199,15 +199,15 @@ const getNameFromBarcode = async (barcode) => {
 
 
 //helper
-const getAllergensAsArray = (allergens) => {
+const stringToArray = (strg) => {
     let fIndex = 0, result = [];
-    for (let i = 0; i < allergens.length; i++) {
-        if (allergens[i] == ',') {
-            result.push(allergens.substring(fIndex, i))
+    for (let i = 0; i < strg.length; i++) {
+        if (strg[i] == ',') {
+            result.push(strg.substring(fIndex, i))
             fIndex = i + 1;
         }
-        if (i === allergens.length - 1)
-            result.push(allergens.substring(fIndex))
+        if (i === strg.length - 1)
+            result.push(strg.substring(fIndex))
     }
     return result;
 }
@@ -226,7 +226,7 @@ const EmptyOrRows = (rows) => {
 
 const checkForAllergens = (ingredients, allergens) => {
     let count = 0
-    let allergensFound = '';
+    let allergensFound = [];
     console.log("ingredients:", ingredients)
 
     if (allergens.length == 0)
@@ -235,16 +235,24 @@ const checkForAllergens = (ingredients, allergens) => {
     for (let allergen of allergens) {
         for (let ingredient of ingredients) {
             if (ingredient.match(allergen) && !(allergen === 'Egg' && ingredient.match('Eggplant')) && allergen !== '') {
-                allergensFound += `${allergen}, `;
+                allergensFound[count] = allergen;
                 count++;
             }
         }
     }
-    allergensFound = allergensFound.substring(0, allergensFound.length - 2)
     if (count == 0 || allergensFound == ', ')
         return { status: "safe", count: 0 }
 
-    return { status: "not safe", count: count, allergensFound: allergensFound }
+    return { status: "not safe", count: count, allergensFound: arrToString(allergensFound) }
+}
+
+const arrToString = (arr) =>{
+    let temp = '';
+    for (let elmt of arr){
+        temp += `${elmt}, `
+    }
+    temp = temp.substring(0, temp-2)
+    return temp;
 }
 
 //launch application
