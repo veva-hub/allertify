@@ -100,6 +100,8 @@ app.post('/product/barcode', async(req, res, next)=>{
     }
 
     let ingredients = await getIngredients(name)
+    console.log(ingredients)
+    console.log(allergens)
 
     let result = checkForAllergens(ingredients, allergens);
     result = {...result, name : name}
@@ -221,8 +223,8 @@ const checkForAllergens = (ingredients, allergens) =>{
             count++;
         }
     }
-    allergensFound = allergensFound.substring(allergensFound.length-2)
-
+    allergensFound = allergensFound.substring(0,allergensFound.length-2)
+    console.log(allergensFound)
     if(count == 0 || allergensFound == ', ')
         return {status : "safe", count : 0}
 
