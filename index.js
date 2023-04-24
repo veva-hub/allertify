@@ -38,7 +38,8 @@ app.get('/ingredients', async (req, res, next) => {
     res.json(ingredients);
 })
 
-app.get('/allergens', async(req,res, next)=>{
+app.post('/allergens', async (req, res, next) => {
+    console.log(req.body)
     let allergens = await getAllergens(req.body.name);
     res.json(allergens);
 })
@@ -162,9 +163,9 @@ const getAllAllergens = async () => {
     return ingredients;
 }
 
-const getAllergens = async(name) =>{
+const getAllergens = async (name) => {
     let allergens = await getAllAllergens();
-    let result = allergens.filter(allergen =>{
+    let result = allergens.filter(allergen => {
         return allergen.toLowerCase().match(name.toLowerCase())
     })
     return result;
