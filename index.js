@@ -24,9 +24,7 @@ app.use(
     })
 );
 app.use(cors({
-    origin: [
-        `http://${appIP}`
-    ],
+    origin: appIP,
     credentials: true
 }));
 
@@ -39,7 +37,9 @@ app.get('/ingredients', async (req, res, next) => {
 })
 
 app.post('/allergens', async (req, res, next) => {
-    console.log(req.body)
+    console.log('***********************************************************************')
+    console.log('post /allergens')
+    console.log('allergens that match: ')
     let allergens = await getAllergens(req.body.name);
     console.log(allergens)
     console.log(arrToString(allergens))
@@ -52,11 +52,10 @@ app.post('/product/imagerecognition', async (req, res, next) => {
     console.log(req.body)
     //get image and allergens
     let img = req.body.imgUrl;
-    img = img ? img.substring(1, img.length - 1) : '';
+    let url = img ? img.substring(1, img.length - 1) : '';
     let allergens = req.body.allergens;
     allergens = allergens ? stringToArray(allergens) : [];
 
-    let url = img
     //load model
     let prediction;
 
@@ -79,7 +78,7 @@ app.post('/product/imagerecognition', async (req, res, next) => {
         let ingredients = await getIngredients(prediction.class)
 
         let result = checkForAllergens(ingredients, allergens);
-        let score = Math.round(prediction.score * 10000) / 100
+        let score = Math.round(prediction.score * 10000) / 100 //get the prediction score at e-2 precision
         result = { ...result, name: prediction.class, prediction: score }
         console.log(result)
 
@@ -109,8 +108,6 @@ app.post('/product/barcode', async (req, res, next) => {
     }
 
     let ingredients = await getIngredients(name)
-    console.log(ingredients)
-    console.log(allergens)
 
     let result = checkForAllergens(ingredients, allergens);
     result = { ...result, name: name }
@@ -237,8 +234,10 @@ const checkForAllergens = (ingredients, allergens) => {
 
     for (let allergen of allergens) {
         for (let ingredient of ingredients) {
-            if (ingredient.match(allergen) && !(allergen === 'Egg' && ingredient.match('Eggplant')) && allergen !== '') {
-                allergensFound[count] = allergen;
+            if (ingredient.toLowerCase().match(allergen.toLowerCase()) 
+                    || allergen.toLowerCase().match(ingredient.toLowerCase())
+                    && !(allergen === 'Egg' && ingredient.match('Eggplant')) && allergen !== '') {
+                allergensFound[count] = ingredient;
                 count++;
             }
         }
@@ -255,7 +254,6 @@ const arrToString = (arr) =>{
         temp += `${elmt}, `
     }
     temp = temp.substring(0, temp.length-2)
-    console.log(temp)
     return temp;
 }
 
