@@ -29,27 +29,27 @@ app.use(cors({
 }));
 
 app.get('/ingredients', async (req, res, next) => {
-    console.log('***********************************************************************')
-    console.log('get /ingredients')
+    console.log('\n***********************************************************************')
+    console.log('\nIngredients called')
     let ingredients = await getAllAllergens();
     console.log(ingredients)
     res.json(ingredients);
 })
 
 app.post('/allergens', async (req, res, next) => {
-    console.log('***********************************************************************')
-    console.log('post /allergens')
-    console.log('allergens that match: ')
+    console.log('\n***********************************************************************')
+    console.log('\nAllergens called')
     let allergens = await getAllergens(req.body.name);
+    console.log('\nAllergens that match: ')
     console.log(allergens)
-    console.log(arrToString(allergens))
+    console.log('\n', arrToString(allergens))
     res.json(arrToString(allergens));
 })
 
 app.post('/product/imagerecognition', async (req, res, next) => {
-    console.log('***********************************************************************')
-    console.log('post /product/imagerecognition')
-    console.log(req.body)
+    console.log('\n***********************************************************************')
+    console.log('\nImage recognition called')
+    console.log('\nRequest:', req.body)
     //get image and allergens
     let img = req.body.imgUrl;
     let url = img ? img.substring(1, img.length - 1) : '';
@@ -71,7 +71,7 @@ app.post('/product/imagerecognition', async (req, res, next) => {
 
         // check if highest value is greater that 0.7
         if (prediction.score < 0.7 || prediction.class === "Not food") {
-            console.log('no food recognized')
+            console.log('\nNo food recognized')
             return res.status(400).json({ error: 'no food recognized' });
         }
 
@@ -80,7 +80,7 @@ app.post('/product/imagerecognition', async (req, res, next) => {
         let result = checkForAllergens(ingredients, allergens);
         let score = Math.round(prediction.score * 10000) / 100 //get the prediction score at e-2 precision
         result = { ...result, name: prediction.class, prediction: score }
-        console.log(result)
+        console.log('\n', result)
 
         return res.status(200).json(result)
     }).catch((e) => {
@@ -90,9 +90,9 @@ app.post('/product/imagerecognition', async (req, res, next) => {
 })
 
 app.post('/product/barcode', async (req, res, next) => {
-    console.log('***********************************************************************')
-    console.log('post product/barcode')
-    console.log(req.body)
+    console.log('\n***********************************************************************')
+    console.log('\nBarcode called')
+    console.log('\nRequest:', req.body)
 
     //get barcode and allergens
     let barcode = req.body.barcode;
@@ -103,7 +103,7 @@ app.post('/product/barcode', async (req, res, next) => {
     let name = await getNameFromBarcode(barcode);
 
     if (!name) {
-        console.log('barcode not found in database')
+        console.log('\nBarcode not found in database')
         return res.status(400).json({ error: 'barcode not found in database' })
     }
 
@@ -111,7 +111,7 @@ app.post('/product/barcode', async (req, res, next) => {
 
     let result = checkForAllergens(ingredients, allergens);
     result = { ...result, name: name }
-    console.log(result)
+    console.log('\n', result)
 
     return res.status(200).json(result)
 })
@@ -227,16 +227,15 @@ const EmptyOrRows = (rows) => {
 const checkForAllergens = (ingredients, allergens) => {
     let count = 0
     let allergensFound = [];
-    console.log("ingredients:", ingredients)
+    console.log("\nFood Ingredients:", ingredients)
 
     if (allergens.length == 0)
         return { status: "safe", count: count }
 
     for (let allergen of allergens) {
         for (let ingredient of ingredients) {
-            if (ingredient.toLowerCase().match(allergen.toLowerCase()) 
-                    || allergen.toLowerCase().match(ingredient.toLowerCase())
-                    && !(allergen === 'Egg' && ingredient.match('Eggplant')) && allergen !== '') {
+            if (ingredient.toLowerCase().match(allergen.toLowerCase())
+                && !(allergen === 'Egg' && ingredient.match('Eggplant')) && allergen !== '') {
                 allergensFound[count] = ingredient;
                 count++;
             }
@@ -248,12 +247,12 @@ const checkForAllergens = (ingredients, allergens) => {
     return { status: "not safe", count: count, allergensFound: arrToString(allergensFound) }
 }
 
-const arrToString = (arr) =>{
+const arrToString = (arr) => {
     let temp = '';
-    for (let elmt of arr){
+    for (let elmt of arr) {
         temp += `${elmt}, `
     }
-    temp = temp.substring(0, temp.length-2)
+    temp = temp.substring(0, temp.length - 2)
     return temp;
 }
 
